@@ -6,7 +6,8 @@
       <v-text-field outlined v-model="ideaText" label="아이디어 내용">
       </v-text-field>
       <v-card-actions>
-        <v-btn @click="addData"> add idea</v-btn>
+        <v-spacer></v-spacer>
+        <v-btn @click="addData"> 아이디어 추가</v-btn>
         <!--  
         <v-btn @click="getData"> get test </v-btn>
         -->
