@@ -1,52 +1,68 @@
 <template>
-  <v-container>
-    <v-card>
-      <v-text-field outlined v-model="ideaTitle" label="아이디어 제목">
-      </v-text-field>
-      <v-text-field outlined v-model="ideaText" label="아이디어 내용">
-      </v-text-field>
+  <v-container fill-height>
+    <v-card class="mx-auto" flat width="400">
+      <v-card-text
+        v-if="distance"
+        class="indigo--text text-center text-h2 font-italic font-weight-bold"
+      >
+        <strong> {{ distance }} </strong>
+        <v-progress-linear
+          color="deep-purple"
+          :buffer-value="peak"
+          :value="distance"
+          stream
+        ></v-progress-linear>
+      </v-card-text>
+
+      <v-card outlined height="200" class="d-flex mx-auto align-center">
+        <v-scroll-x-transition>
+          <v-img
+            transtion="v-scroll-y-transition"
+            v-if="isPlaying"
+            max-width="100"
+            src="@/assets/walking.svg"
+            class="mx-auto"
+          >
+          </v-img>
+        </v-scroll-x-transition>
+      </v-card>
+
       <v-card-actions>
+        <v-btn @click="play" depressed color="purple" dark>
+          <v-icon> mdi-speaker </v-icon>
+          작동 테스트
+        </v-btn>
         <v-spacer></v-spacer>
-        <v-btn @click="addData"> 아이디어 추가</v-btn>
-        <!--  
-        <v-btn @click="getData"> get test </v-btn>
-        -->
-      </v-card-actions>
-    </v-card>
-    <v-card v-for="(item, i) in list" :key="i" outlined>
-      <v-card-title v-if="!updateState">
-        {{ item.ideaTitle }} <v-spacer></v-spacer>
+        <v-chip color="deep-purple" dark class="ma-2">
+          기준 : {{ this.peak }} cm
+        </v-chip>
         <v-btn
+          v-if="peak < 100"
           icon
-          @click="(ideaTitle = ''), (ideaText = ''), (updateState = true)"
-          ><v-icon color="green">mdi-pen</v-icon></v-btn
+          @click="peak = peak + 10"
+          depressed
+          color="pink"
+          class="pa-0"
         >
-        <v-btn icon @click="deleteData(item.id)"
-          ><v-icon color="red">mdi-close</v-icon></v-btn
+          <v-icon large>mdi-arrow-up-bold-circle-outline</v-icon>
+        </v-btn>
+        <v-btn v-else icon depressed color="pink" class="pa-0">
+          <v-icon large>mdi-arrow-up-bold-circle-outline</v-icon>
+        </v-btn>
+
+        <v-btn
+          v-if="peak > 0"
+          icon
+          @click="peak = peak - 10"
+          depressed
+          color="pink"
+          class="pa-0"
         >
-      </v-card-title>
-      <v-card-title v-else>
-        <v-text-field
-          v-model="item.ideaTitle"
-          outlined
-          label="아이디어 제목"
-        ></v-text-field>
-      </v-card-title>
-      <v-card-text v-if="!updateState">
-        {{ item.ideaText }}
-      </v-card-text>
-      <v-card-text v-else>
-        <v-text-field
-          v-model="item.ideaText"
-          outlined
-          label="아이디어 내용"
-        ></v-text-field>
-      </v-card-text>
-      <v-card-text v-if="item.createdTimestamp">
-        {{ new Date(item.createdTimestamp.seconds * 1000) }}
-      </v-card-text>
-      <v-card-actions v-if="updateState">
-        <v-btn @click="updateData(item)">수정완료</v-btn>
+          <v-icon large>mdi-arrow-down-bold-circle-outline</v-icon>
+        </v-btn>
+        <v-btn v-else icon depressed color="pink" class="pa-0">
+          <v-icon large>mdi-arrow-down-bold-circle-outline</v-icon>
+        </v-btn>
       </v-card-actions>
     </v-card>
   </v-container>
@@ -55,22 +71,17 @@
 <script>
 // @ is an alias to /src
 import { db } from "@/firebase/db";
-import {
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  orderBy,
-  serverTimestamp,
-  onSnapshot,
-  deleteDoc,
-  doc,
-  updateDoc,
-} from "firebase/firestore";
+import { ref, onValue } from "firebase/database";
+import { useSound } from "@vueuse/sound";
+import trumpetSfx from "@/assets/3.mp3";
 
 export default {
   name: "Home",
   data: () => ({
+    intervalId: null,
+    distance: null,
+    selected: null,
+    peak: 30,
     updateState: false,
     ideaTitle: "",
     ideaText: "",
@@ -81,45 +92,34 @@ export default {
   created() {
     this.snapshotData();
   },
-  methods: {
-    async addData() {
-      await addDoc(collection(db, "idea"), {
-        ideaTitle: this.ideaTitle,
-        ideaText: this.ideaText,
-        createdTimestamp: serverTimestamp(),
-      });
+  watch: {
+    distance() {
+      if (this.distance > this.peak) {
+        if (!this.isPlaying) {
+          this.play();
+          console.log(1);
+        }
+      }
     },
-    async getData() {
-      this.list = [];
-      const querySnapshot = await getDocs(collection(db, "idea"));
-      querySnapshot.forEach((doc) => {
-        this.list.push(doc.data());
-        // doc.data() is never undefined for query doc snapshots
-        console.log(doc.id, " => ", doc.data());
-      });
-    },
-    async snapshotData() {
-      const q = query(collection(db, "idea"), orderBy("createdTimestamp", "desc"));
-      this.unsubscribe = onSnapshot(q, (querySnapshot) => {
-        this.list = [];
-        querySnapshot.forEach((doc) => {
-          console.log(doc.id);
-          this.list.push({ ...doc.data(), id: doc.id });
-        });
-      });
-    },
-    async deleteData(id) {
-      await deleteDoc(doc(db, "idea", id));
-    },
-    async updateData(item) {
-      const ref = doc(db, "idea", item.id);
+  },
 
-      // Set the "capital" field of the city 'DC'
-      await updateDoc(ref, {
-        ...item,
+  methods: {
+    async snapshotData() {
+      this.unsubscribe = ref(db, "FirebaseIOT/level");
+      onValue(this.unsubscribe, (snapshot) => {
+        const data = snapshot.val();
+        this.distance = data;
       });
-      this.updateState = false;
     },
+  },
+  setup() {
+    const { play, stop, isPlaying } = useSound(trumpetSfx);
+
+    return {
+      play,
+      stop,
+      isPlaying,
+    };
   },
   distroyed() {
     if (this.unsubscribe) {
