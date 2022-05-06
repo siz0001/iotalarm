@@ -1,4 +1,4 @@
-# ideaapp2
+# iotalarm
 
 ## Project setup
 ```
