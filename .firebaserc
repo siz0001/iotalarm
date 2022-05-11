@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "iotalarm"
-  }
+    "default": "iotalarm",
+    "staging": "iotalarm-7c087"
+  },
+  "targets": {}
 }

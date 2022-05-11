@@ -76,6 +76,15 @@ import { useSound } from "@vueuse/sound";
 import trumpetSfx from "@/assets/3.mp3";
 
 export default {
+  setup() {
+    const { play, stop, isPlaying } = useSound(trumpetSfx);
+
+    return {
+      play,
+      stop,
+      isPlaying,
+    };
+  },
   name: "Home",
   data: () => ({
     intervalId: null,
@@ -92,6 +101,7 @@ export default {
   created() {
     this.snapshotData();
   },
+
   watch: {
     distance() {
       if (this.distance > this.peak) {
@@ -112,15 +122,7 @@ export default {
       });
     },
   },
-  setup() {
-    const { play, stop, isPlaying } = useSound(trumpetSfx);
 
-    return {
-      play,
-      stop,
-      isPlaying,
-    };
-  },
   distroyed() {
     if (this.unsubscribe) {
       this.unsubscribe();
